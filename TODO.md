@@ -1,0 +1,4 @@
+- [x] 1. Update lib/db.ts schema for studentId required
+- [x] 2. Update app/api/auth/register/route.ts for student linking
+- [x] 3. Update app/api/auth/login/route.ts for ID login
+- [x] 5. Update app/login/page.tsx UI
