@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   try {
     const { email, password, studentId } = await req.json();
+    console.log('Login attempt:', { email, passwordLength: password?.length });
+
 
     if (!password || (!email && !studentId)) {
       return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
@@ -12,10 +14,10 @@ export async function POST(req: NextRequest) {
 
     // 1. Mock fallback check (Prioritize for demo stability)
     let user = null;
-    if (email === 'admin@dgvc.edu' && password === 'password123') {
-      user = { _id: 'mock-admin-id', email: 'admin@dgvc.edu', name: 'Admin Principal', role: 'admin' };
-    } else if (email === 'staff@dgvc.edu' && password === 'password123') {
-      user = { _id: 'mock-staff-id', email: 'staff@dgvc.edu', name: 'John Professor', role: 'staff' };
+    if (email === 'admin@dgvc.com' && password === 'password123') {
+      user = { _id: 'mock-admin-id', email: 'admin@dgvc.com', name: 'Admin Principal', role: 'admin' };
+    } else if (email === 'staff@dgvc.com' && password === 'password123') {
+      user = { _id: 'mock-staff-id', email: 'staff@dgvc.com', name: 'John Professor', role: 'staff' };
     }
 
     // 2. Database check (Only if mock didn't match)

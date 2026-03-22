@@ -23,12 +23,26 @@ export default function AddStudentPage() {
         setLoading(true);
         setError(null);
 
-        // Mock API call
-        setTimeout(() => {
+        try {
+            const res = await fetch('/api/students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            if (res.ok) {
+                setSuccess(true);
+                setTimeout(() => router.push('/dashboard/staff/students'), 2500);
+            } else {
+                const data = await res.json();
+                setError(data.error || 'Failed to register student');
+            }
+        } catch (err) {
+            console.error('Error adding student:', err);
+            setError('Network error. Please try again.');
+        } finally {
             setLoading(false);
-            setSuccess(true);
-            setTimeout(() => router.push('/dashboard/staff/students'), 2000);
-        }, 1500);
+        }
     };
 
     return (

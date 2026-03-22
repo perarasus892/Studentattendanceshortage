@@ -3,9 +3,11 @@
 import DashboardLayout from '@/components/dashboard-layout';
 import { useEffect, useState, useMemo } from 'react';
 import { CheckSquare, Users, Calendar, ArrowLeft, CheckCircle2, AlertCircle, Clock, Search, MapPin, GraduationCap } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/lib/auth-context';
 
 interface Student {
   _id: string;
@@ -14,8 +16,12 @@ interface Student {
   class: string;
 }
 
-export default function MarkAttendancePage() {
+function MarkAttendanceContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const classFilter = searchParams.get('class');
+  
+  const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [marked, setMarked] = useState<Record<string, boolean>>({});
@@ -28,9 +34,14 @@ export default function MarkAttendancePage() {
         const res = await fetch('/api/students');
         const data = await res.json();
         if (Array.isArray(data)) {
-          setStudents(data);
+          // If class filter is present, filter students
+          const filtered = classFilter 
+            ? data.filter((s: Student) => s.class === classFilter)
+            : data;
+            
+          setStudents(filtered);
           const initialMarked: Record<string, boolean> = {};
-          data.forEach(s => initialMarked[s._id] = true); // Default all to present
+          filtered.forEach((s: Student) => initialMarked[s._id] = true); // Default all to present
           setMarked(initialMarked);
         }
       } catch (error) {
@@ -40,18 +51,48 @@ export default function MarkAttendancePage() {
       }
     };
     fetchStudents();
-  }, []);
+  }, [classFilter]);
 
   const toggleStatus = (id: string) => {
     setMarked(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleSubmit = () => {
+  const markAll = (status: boolean) => {
+    const newMarked: Record<string, boolean> = {};
+    students.forEach(s => newMarked[s._id] = status);
+    setMarked(newMarked);
+  };
+
+  const handleSubmit = async () => {
+    if (!user?.id) return;
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const today = new Date().toISOString();
+      const attendanceData = Object.entries(marked).map(([studentId, isPresent]) => ({
+        studentId,
+        date: today,
+        status: isPresent ? 'present' : 'absent',
+        userId: user.id
+      }));
+
+      const res = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attendanceData),
+      });
+
+      if (res.ok) {
+        setSuccess(true);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to sync attendance");
+      }
+    } catch (error) {
+      console.error('Error submitting attendance:', error);
+      alert("Network error. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      setSuccess(true);
-    }, 1500);
+    }
   };
 
   const getDeptFromClass = (className: string) => {
@@ -140,7 +181,7 @@ export default function MarkAttendancePage() {
                 <div className="text-center py-12 text-slate-400 font-medium">No students registered for this session.</div>
               ) : (
                 <Tabs defaultValue={Object.keys(studentsByDeptAndClass)[0]} className="w-full">
-                  <div className="px-8 pt-4 border-b border-slate-200 bg-slate-100/50">
+                  <div className="px-8 pt-4 border-b border-slate-200 bg-slate-100/50 flex items-center justify-between">
                     <TabsList className="bg-transparent h-auto p-0 gap-8">
                       {Object.keys(studentsByDeptAndClass).map((dept) => (
                         <TabsTrigger
@@ -152,11 +193,15 @@ export default function MarkAttendancePage() {
                         </TabsTrigger>
                       ))}
                     </TabsList>
+                    <div className="flex items-center gap-2 mb-2">
+                         <button onClick={() => markAll(true)} className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-100 transition-all">Mark All Present</button>
+                         <button onClick={() => markAll(false)} className="px-3 py-1 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-100 hover:bg-red-100 transition-all">Mark All Absent</button>
+                    </div>
                   </div>
 
                   {Object.entries(studentsByDeptAndClass).map(([dept, classes]) => (
                     <TabsContent key={dept} value={dept} className="p-0 m-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                      {Object.entries(classes).map(([className, classStudents]) => (
+                      {Object.entries(classes).map(([className, classStudents]: [string, Student[]]) => (
                         <div key={className} className="border-b border-slate-100 last:border-0">
                           <div className="p-8 bg-white flex items-center gap-4 border-b border-slate-50">
                             <div className="h-10 w-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -168,7 +213,7 @@ export default function MarkAttendancePage() {
                             </div>
                           </div>
                           <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/30">
-                            {classStudents.map((student) => (
+                            {classStudents.map((student: Student) => (
                               <div
                                 key={student._id}
                                 onClick={() => toggleStatus(student._id)}
@@ -215,5 +260,20 @@ export default function MarkAttendancePage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function MarkAttendancePage() {
+  return (
+    <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+           <div className="flex flex-col items-center gap-4">
+              <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <p className="font-black text-xs uppercase tracking-widest text-slate-400">Loading Session...</p>
+           </div>
+        </div>
+    }>
+      <MarkAttendanceContent />
+    </Suspense>
   );
 }

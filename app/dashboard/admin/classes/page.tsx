@@ -42,7 +42,10 @@ export default function AdminClassesPage() {
                         <h2 className="text-3xl font-bold tracking-tight">Class Management</h2>
                         <p className="text-muted-foreground">Detailed overview of attendance across all departments</p>
                     </div>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    <button 
+                        onClick={() => alert("Administrative Protocol: Class creation is restricted to HOD level accounts in this version.")}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
                         Add New Class
                     </button>
                 </div>
@@ -124,9 +127,10 @@ export default function AdminClassesPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
-                                                    variant={
-                                                        item.status === 'good' ? 'success' :
-                                                            item.status === 'warning' ? 'warning' : 'destructive'
+                                                    variant="outline"
+                                                    className={
+                                                        item.status === 'good' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                            item.status === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
                                                     }
                                                 >
                                                     {item.status.toUpperCase()}

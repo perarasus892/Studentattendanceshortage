@@ -27,7 +27,11 @@ export default function AttendancePage() {
           // First, find the student record for this user
           const studentsRes = await fetch('/api/students');
           const students = await studentsRes.json();
-          const currentStudent = students.find((s: any) => s.userId === user.id);
+          const currentStudent = students.find((s: any) => 
+            s.userId === user.id || 
+            s.userId?._id === user.id || 
+            s.userId?._id?.toString() === user.id
+          );
 
           if (currentStudent) {
             let url = `/api/attendance?studentId=${currentStudent._id}`;

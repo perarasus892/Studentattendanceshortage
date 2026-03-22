@@ -42,32 +42,43 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const { studentId, date, status, userId } = await req.json();
+    const body = await req.json();
+
+    // Check if it's a bulk insert (array)
+    if (Array.isArray(body)) {
+      const results = [];
+      for (const item of body) {
+        const { studentId, date, status, userId } = item;
+        if (!studentId || !date || !status || !userId) continue;
+
+        const dateObj = new Date(date);
+        dateObj.setHours(0, 0, 0, 0);
+
+        const record = await Attendance.findOneAndUpdate(
+          { studentId, date: dateObj },
+          { status, markedBy: userId },
+          { upsert: true, new: true }
+        );
+        results.push(record);
+      }
+      return NextResponse.json({ success: true, count: results.length, records: results });
+    }
+
+    // Single insert logic
+    const { studentId, date, status, userId } = body;
 
     if (!studentId || !date || !status || !userId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const existingAttendance = await Attendance.findOne({
-      studentId,
-      date: new Date(date),
-    });
+    const dateObj = new Date(date);
+    dateObj.setHours(0, 0, 0, 0);
 
-    if (existingAttendance) {
-      existingAttendance.status = status;
-      existingAttendance.markedBy = userId;
-      await existingAttendance.save();
-      return NextResponse.json(existingAttendance);
-    }
-
-    const attendance = new Attendance({
-      studentId,
-      date: new Date(date),
-      status,
-      markedBy: userId,
-    });
-
-    await attendance.save();
+    const attendance = await Attendance.findOneAndUpdate(
+      { studentId, date: dateObj },
+      { status, markedBy: userId },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json(attendance, { status: 201 });
   } catch (error) {

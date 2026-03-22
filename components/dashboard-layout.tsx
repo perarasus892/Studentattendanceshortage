@@ -2,7 +2,8 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
 import Link from 'next/link';
 import {
   LayoutDashboard,
@@ -28,6 +29,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, requiredRole }: DashboardLayoutProps) {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -36,21 +38,6 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
       router.push('/dashboard');
     }
   }, [user, isLoading, router, requiredRole]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <div className="text-slate-500 font-medium">Loading system...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
 
   const navigationItems = {
     admin: [
@@ -73,7 +60,25 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
     ],
   };
 
-  const navItems = navigationItems[user.role as keyof typeof navigationItems] || [];
+  const navItems = user ? (navigationItems[user.role as keyof typeof navigationItems] || []) : [];
+  const filteredItems = navItems.filter(item => 
+    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (isLoading) {
+     return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="text-slate-500 font-medium">Loading system...</div>
+          </div>
+        </div>
+      );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="h-screen bg-slate-50 flex font-sans overflow-hidden">
@@ -91,6 +96,8 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
             <input
               placeholder="Search menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-800 border-none text-xs py-2 pl-9 rounded-md text-slate-300 focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -98,7 +105,7 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
 
         <nav className="flex-1 px-4 py-4 space-y-1">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2">Main Menu</p>
-          {navItems.map((item) => {
+          {filteredItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -114,11 +121,11 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
 
           <div className="mt-8">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2">System</p>
-            <Link href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 transition-all font-medium text-sm">
+            <Link href={`/dashboard/${user.role}/settings`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 transition-all font-medium text-sm">
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </Link>
-            <Link href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 transition-all font-medium text-sm">
+            <Link href={`/dashboard/${user.role}/notifications`} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 text-slate-400 transition-all font-medium text-sm">
               <Bell className="h-4 w-4" />
               <span>Notifications</span>
             </Link>

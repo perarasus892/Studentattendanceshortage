@@ -13,14 +13,18 @@ async function seed() {
     password: { type: String, required: true },
     name: { type: String, required: true },
     role: { type: String, enum: ['admin', 'staff', 'student'], required: true },
+    studentId: { type: String },
   });
+
 
   const studentSchema = new mongoose.Schema({
     name: { type: String, required: true },
     rollNumber: { type: String, required: true, unique: true },
     class: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   });
+
 
   const attendanceSchema = new mongoose.Schema({
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
@@ -58,14 +62,30 @@ async function seed() {
   console.log('Users created: admin@dgvc.edu, staff@dgvc.edu');
 
   // Students
-  const students = await Student.create([
+  const students = [];
+  const studentData = [
     { name: 'Arun Kumar', rollNumber: 'CS2201', class: 'CS-A', email: 'arun@student.dgvc.edu' },
     { name: 'Basker S', rollNumber: 'CS2202', class: 'CS-A', email: 'basker@student.dgvc.edu' },
     { name: 'Deepika R', rollNumber: 'CS2203', class: 'CS-A', email: 'deepika@student.dgvc.edu' },
     { name: 'Eshwar M', rollNumber: 'EC2241', class: 'EC-B', email: 'eshwar@student.dgvc.edu' },
-  ]);
+  ];
 
-  console.log('Students created:', students.length);
+  for (const data of studentData) {
+    const student = await Student.create(data);
+    const user = await User.create({
+      email: data.email,
+      password: hashedPassword,
+      name: data.name,
+      role: 'student',
+      studentId: student._id.toString()
+    });
+    student.userId = user._id;
+    await student.save();
+    students.push(student);
+  }
+
+  console.log('Students created (and their login accounts):', students.length);
+
 
   // Attendance
   const today = new Date();
