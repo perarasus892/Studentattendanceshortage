@@ -1,9 +1,11 @@
 'use client';
 
 import DashboardLayout from '@/components/dashboard-layout';
-import { useEffect, useState } from 'react';
-import { CheckSquare, Users, Calendar, ArrowLeft, CheckCircle2, AlertCircle, Clock, Search, MapPin } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { CheckSquare, Users, Calendar, ArrowLeft, CheckCircle2, AlertCircle, Clock, Search, MapPin, GraduationCap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
 interface Student {
   _id: string;
@@ -52,9 +54,27 @@ export default function MarkAttendancePage() {
     }, 1500);
   };
 
+  const getDeptFromClass = (className: string) => {
+    if (className.startsWith('CS')) return 'Computer Science';
+    if (className.startsWith('ME')) return 'Mechanical Engineering';
+    if (className.startsWith('EC')) return 'Electronics & Communication';
+    if (className.startsWith('BT')) return 'Biotechnology';
+    return 'General Studies';
+  };
+
+  const studentsByDeptAndClass = useMemo(() => {
+    return students.reduce((acc, student) => {
+      const dept = getDeptFromClass(student.class);
+      if (!acc[dept]) acc[dept] = {};
+      if (!acc[dept][student.class]) acc[dept][student.class] = [];
+      acc[dept][student.class].push(student);
+      return acc;
+    }, {} as Record<string, Record<string, Student[]>>);
+  }, [students]);
+
   return (
     <DashboardLayout requiredRole="staff">
-      <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
+      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors mb-2 text-sm font-bold">
@@ -106,49 +126,90 @@ export default function MarkAttendancePage() {
                   <Users className="text-slate-400" size={18} />
                   <span className="font-black text-slate-700">{students.length} Total</span>
                 </div>
-                <button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 md:flex-none px-8 py-4 bg-blue-600 text-white font-black rounded-3xl shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-[1.05] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                <button onClick={handleSubmit} disabled={isSubmitting || students.length === 0} className="flex-1 md:flex-none px-8 py-4 bg-blue-600 text-white font-black rounded-3xl shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all hover:scale-[1.05] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
                   {isSubmitting ? <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckSquare size={18} />}
                   {isSubmitting ? 'Syncing...' : 'Finalize Session'}
                 </button>
               </div>
             </div>
 
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {students.map((student) => (
-                <div
-                  key={student._id}
-                  onClick={() => toggleStatus(student._id)}
-                  className={`relative p-6 rounded-[32px] border-2 transition-all cursor-pointer group select-none ${marked[student._id]
-                      ? 'bg-blue-50/50 border-blue-200 hover:border-blue-300'
-                      : 'bg-slate-50 border-slate-200 hover:border-red-200 hover:bg-red-50/30'
-                    }`}
-                >
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-xl font-black transition-all ${marked[student._id] ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-200 text-slate-500'
-                      }`}>
-                      {student.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className={`font-black tracking-tight truncate leading-none mb-1 ${marked[student._id] ? 'text-blue-900' : 'text-slate-400'}`}>
-                        {student.name}
-                      </p>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{student.rollNumber}</p>
-                    </div>
+            <div className="p-0">
+              {isLoading && students.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 font-medium">Loading session data...</div>
+              ) : Object.keys(studentsByDeptAndClass).length === 0 ? (
+                <div className="text-center py-12 text-slate-400 font-medium">No students registered for this session.</div>
+              ) : (
+                <Tabs defaultValue={Object.keys(studentsByDeptAndClass)[0]} className="w-full">
+                  <div className="px-8 pt-4 border-b border-slate-200 bg-slate-100/50">
+                    <TabsList className="bg-transparent h-auto p-0 gap-8">
+                      {Object.keys(studentsByDeptAndClass).map((dept) => (
+                        <TabsTrigger
+                          key={dept}
+                          value={dept}
+                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-0 py-4 text-xs font-black uppercase tracking-widest shadow-none transition-all focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                        >
+                          {dept}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-white shadow-sm rounded-full">
-                      <div className={`h-2 w-2 rounded-full ${marked[student._id] ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
-                      <span className={`text-[10px] font-black uppercase tracking-tight ${marked[student._id] ? 'text-emerald-700' : 'text-slate-400'}`}>
-                        {marked[student._id] ? 'Present' : 'Absent'}
-                      </span>
-                    </div>
-                    <div className={`h-10 w-10 border-2 rounded-2xl flex items-center justify-center transition-all ${marked[student._id] ? 'bg-blue-100 border-blue-300 text-blue-600' : 'bg-white border-slate-200 text-slate-300'
-                      }`}>
-                      {marked[student._id] ? <CheckCircle2 size={24} /> : <div className="h-6 w-6 rounded-lg bg-slate-100" />}
-                    </div>
-                  </div>
-                </div>
-              ))}
+
+                  {Object.entries(studentsByDeptAndClass).map(([dept, classes]) => (
+                    <TabsContent key={dept} value={dept} className="p-0 m-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {Object.entries(classes).map(([className, classStudents]) => (
+                        <div key={className} className="border-b border-slate-100 last:border-0">
+                          <div className="p-8 bg-white flex items-center gap-4 border-b border-slate-50">
+                            <div className="h-10 w-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                              <GraduationCap size={20} />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-black text-slate-900 tracking-tight">Class: {className}</h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{classStudents.length} Students marking attendance</p>
+                            </div>
+                          </div>
+                          <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/30">
+                            {classStudents.map((student) => (
+                              <div
+                                key={student._id}
+                                onClick={() => toggleStatus(student._id)}
+                                className={`relative p-6 rounded-[32px] border-2 transition-all cursor-pointer group select-none ${marked[student._id]
+                                  ? 'bg-blue-50/50 border-blue-200 hover:border-blue-300'
+                                  : 'bg-white border-slate-200 hover:border-red-200 hover:bg-red-50/30 shadow-sm'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-4 mb-4">
+                                  <div className={`h-12 w-12 rounded-[20px] flex items-center justify-center text-lg font-black transition-all ${marked[student._id] ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-500'
+                                    }`}>
+                                    {student.name.charAt(0)}
+                                  </div>
+                                  <div className="flex-1 overflow-hidden">
+                                    <p className={`font-bold tracking-tight truncate leading-tight mb-1 ${marked[student._id] ? 'text-blue-900' : 'text-slate-600'}`}>
+                                      {student.name}
+                                    </p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{student.rollNumber}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-100 shadow-sm rounded-full">
+                                    <div className={`h-2 w-2 rounded-full ${marked[student._id] ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                                    <span className={`text-[10px] font-black uppercase tracking-tight ${marked[student._id] ? 'text-emerald-700' : 'text-slate-400'}`}>
+                                      {marked[student._id] ? 'Present' : 'Absent'}
+                                    </span>
+                                  </div>
+                                  <div className={`h-8 w-8 border-2 rounded-xl flex items-center justify-center transition-all ${marked[student._id] ? 'bg-blue-100 border-blue-300 text-blue-600' : 'bg-slate-50 border-slate-200 text-slate-300'
+                                    }`}>
+                                    {marked[student._id] ? <CheckCircle2 size={16} /> : <div className="h-4 w-4 rounded-lg bg-slate-200" />}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              )}
             </div>
           </div>
         )}
