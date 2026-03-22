@@ -18,21 +18,27 @@ export default function LoginPage() {
   const [showOtp, setShowOtp] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('000000');
 
-  const { login, isLoading } = useAuth();
+  const { login, validateCredentials, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     setGeneratedOtp(String(Math.floor(100000 + Math.random() * 900000)));
   }, []);
 
-  const handleInitialSubmit = (e: React.FormEvent) => {
+  const handleInitialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username || !password) {
       setError('Please enter both username and password');
       return;
     }
     setError('');
-    setShowOtp(true);
+    
+    try {
+      await validateCredentials(username, password);
+      setShowOtp(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid credentials');
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -115,9 +121,10 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-blue-100"
+                disabled={isLoading}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-all shadow-lg shadow-blue-100 disabled:opacity-70"
               >
-                Continue
+                {isLoading ? 'Validating...' : 'Continue'}
               </Button>
             </form>
           ) : (

@@ -292,6 +292,18 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-3xl shadow-xl overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight italic">Global Communications Center</h3>
+              </div>
+              
+              <AdminSmsLogs />
+
+              <div className="p-6 bg-slate-50/30 text-center border-t border-slate-100">
+                <button className="text-xs font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors">Audit All System Trails</button>
+              </div>
+            </div>
+
             <div className="bg-gradient-to-br from-indigo-800 to-slate-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                 <ShieldCheck size={140} />
@@ -308,5 +320,80 @@ export default function AdminDashboard() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function AdminSmsLogs() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch('/api/sms');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setLogs(data);
+        }
+      } catch (err) {
+        console.error('Error fetching SMS logs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, []);
+
+  return (
+    <div className="p-0">
+      {loading ? (
+        <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">Accessing Message Vault...</div>
+      ) : logs.length === 0 ? (
+        <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">No messages transmitted yet</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="text-left py-4 px-6 font-black text-slate-400 uppercase tracking-widest text-[9px]">Student</th>
+                <th className="text-left py-4 px-6 font-black text-slate-400 uppercase tracking-widest text-[9px]">Log Message</th>
+                <th className="text-right py-4 px-6 font-black text-slate-400 uppercase tracking-widest text-[9px]">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 italic font-medium">
+              {logs.map((log) => (
+                <tr key={log._id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 font-black group-hover:scale-110 transition-transform">
+                        {log.studentId?.name?.charAt(0) || 'S'}
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900 leading-none">{log.studentId?.name || 'Unknown Student'}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">{log.studentId?.rollNumber || '---'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-start gap-2 max-w-xs">
+                      <span className="text-lg">📱</span>
+                      <p className="text-xs text-slate-600 leading-relaxed font-bold">{log.message}</p>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                      {new Date(log.sentAt).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs font-black text-slate-900 mt-0.5">
+                      {new Date(log.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

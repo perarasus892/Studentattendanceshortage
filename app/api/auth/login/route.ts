@@ -4,9 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, studentId } = await req.json();
-    console.log('Login attempt:', { email, passwordLength: password?.length });
-
+    const { email, password, studentId, validateOnly } = await req.json();
+    console.log('Login attempt:', { email, passwordLength: password?.length, validateOnly });
 
     if (!password || (!email && !studentId)) {
       return NextResponse.json({ error: 'Missing email or password' }, { status: 400 });
@@ -39,6 +38,11 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Step 1: Pre-validation for the OTP screen
+    if (validateOnly) {
+      return NextResponse.json({ success: true, message: 'Step 1 complete' });
     }
 
     const userIdString = user._id ? user._id.toString() : 'mock-user-id';

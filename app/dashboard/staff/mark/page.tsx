@@ -103,15 +103,24 @@ function MarkAttendanceContent() {
     return 'General Studies';
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      s.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [students, searchQuery]);
+
   const studentsByDeptAndClass = useMemo(() => {
-    return students.reduce((acc, student) => {
+    return filteredStudents.reduce((acc, student) => {
       const dept = getDeptFromClass(student.class);
       if (!acc[dept]) acc[dept] = {};
       if (!acc[dept][student.class]) acc[dept][student.class] = [];
       acc[dept][student.class].push(student);
       return acc;
     }, {} as Record<string, Record<string, Student[]>>);
-  }, [students]);
+  }, [filteredStudents]);
 
   return (
     <DashboardLayout requiredRole="staff">
@@ -159,7 +168,12 @@ function MarkAttendanceContent() {
               <div className="flex-1 w-full max-w-lg">
                 <div className="relative">
                   <Search className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
-                  <input placeholder="Search for a student name..." className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 rounded-3xl text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all font-bold placeholder:text-slate-300" />
+                  <input 
+                    placeholder="Search for a student name..." 
+                    className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 rounded-3xl text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all font-bold placeholder:text-slate-300"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">

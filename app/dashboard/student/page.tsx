@@ -3,7 +3,7 @@
 import DashboardLayout from '@/components/dashboard-layout';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { AlertTriangle, CheckCircle2, AlertCircle, Info, ArrowRight, User as UserIcon } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, AlertCircle, Info, ArrowRight, User as UserIcon, FileText, History as HistoryIcon } from 'lucide-react';
 
 
 interface AttendanceStats {
@@ -20,6 +20,7 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [smsSent, setSmsSent] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -40,6 +41,24 @@ export default function StudentDashboard() {
             const data = await statsRes.json();
             // Attach student metadata for the UI
             setStats({...data, rollNumber: currentStudent.rollNumber, className: currentStudent.class});
+
+            // BCA PROJECT FEATURE: TRIGGER SMS SIMULATION IF < 75%
+            if (data.percentage < 75 && !sessionStorage.getItem('sms_sent_' + currentStudent._id)) {
+              const smsRes = await fetch('/api/sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  studentId: currentStudent._id,
+                  message: `Alert! Your attendance is ${data.percentage}%, which is below 75%. Please improve.`
+                })
+              });
+              if (smsRes.ok) {
+                setSmsSent(true);
+                sessionStorage.setItem('sms_sent_' + currentStudent._id, 'true');
+              }
+            } else if (data.percentage < 75) {
+              setSmsSent(true); // Already sent in this session
+            }
           }
         }
       } catch (error) {
@@ -124,39 +143,50 @@ export default function StudentDashboard() {
             </div>
 
             {/* Right content: stats and summaries */}
-            <div className="md:col-span-8 space-y-4">
+            <div className="md:col-span-8 space-y-6">
               {stats ? (
                 <>
                   {/* Shortage Alert Banner */}
                   {(stats.status === 'warning' || stats.status === 'critical') && (
-                    <div className={`p-5 rounded-3xl border-2 mb-6 animate-in slide-in-from-top-4 duration-500 shadow-lg ${
-                      stats.status === 'critical' ? 'bg-red-50 border-red-200 text-red-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+                    <div className={`p-6 rounded-[2.5rem] border-2 animate-in slide-in-from-top-4 duration-500 shadow-2xl relative overflow-hidden ${
+                      stats.status === 'critical' ? 'bg-red-50/50 border-red-200 text-red-900' : 'bg-amber-50/50 border-amber-200 text-amber-900'
                     }`}>
-                      <div className="flex gap-4 items-start">
-                        <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                          stats.status === 'critical' ? 'bg-red-200 text-red-700' : 'bg-amber-200 text-amber-700'
+                      <div className="absolute top-0 right-0 p-4 opacity-5">
+                         <AlertTriangle size={80} />
+                      </div>
+                      <div className="flex gap-6 items-start relative z-10">
+                        <div className={`h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
+                          stats.status === 'critical' ? 'bg-red-600 text-white animate-pulse' : 'bg-amber-500 text-white'
                         }`}>
-                          <AlertTriangle size={24} />
+                          <AlertCircle size={28} />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-black text-lg tracking-tight mb-1">
-                            {stats.status === 'critical' ? 'Attendance Shortage Alert!' : 'Attendance Warning'}
+                          <h3 className="font-black text-2xl tracking-tight mb-2 font-outfit">
+                            {stats.status === 'critical' ? 'CRITICAL: Attendance Shortage' : 'ATTENTION: Low Attendance'}
                           </h3>
-                          <p className="font-medium text-sm opacity-90 leading-relaxed mb-3">
-                            Your current attendance is <span className="font-black underline">{stats.percentage}%</span>. 
-                            The minimum requirement is 75%. {stats.status === 'critical' ? 'You are currently in the shortage list.' : 'You are approaching the shortage limit.'}
+                          <p className="font-medium text-sm opacity-90 leading-relaxed mb-6 max-w-xl">
+                            You are currently at <span className="font-black bg-white/50 px-2 py-0.5 rounded-lg border border-red-200 mx-1">{stats.percentage}%</span>. 
+                            The University requires a minimum of 75% for exam eligibility. {stats.status === 'critical' ? 'Urgent action is required to avoid debarment.' : 'Please improve your presence immediately.'}
                           </p>
+                          
+                          {smsSent && (
+                            <div className="bg-white px-4 py-2 rounded-2xl border border-red-200 shadow-xl shadow-red-500/10 w-fit mb-6 animate-bounce flex items-center gap-2">
+                               <span className="text-xl">📩</span>
+                               <span className="text-red-600 font-black text-[10px] uppercase tracking-[0.2em]">Automated Alert Dispatched to Parent</span>
+                            </div>
+                          )}
+
                           <div className="flex flex-wrap gap-3">
-                             <div className="px-3 py-1.5 bg-white/50 rounded-xl text-xs font-bold flex items-center gap-2">
-                               <ArrowRight size={14} />
-                               Need <span className="underline">{Math.max(1, 3 * stats.totalDays - 4 * stats.presentDays)}</span> more classes for 75%
+                             <div className="px-4 py-2 bg-white/80 backdrop-blur rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm border border-slate-100">
+                               <ArrowRight size={14} className="text-blue-600" />
+                               Required: <span className="text-blue-600 text-xs">{Math.max(1, 3 * stats.totalDays - 4 * stats.presentDays)}</span> more presence
                              </div>
-                             <button onClick={() => alert("Redirecting to support portal...")} className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:scale-105 transition-transform">
+                             <button onClick={() => alert("Connecting to Faculty Advisor via secure channel...")} className="px-5 py-2 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-900/20 active:scale-95">
                                 Contact Advisor
                              </button>
-                             <button onClick={() => alert("Generating Official Shortage PDF Report... Check your downloads folder soon.")} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-800 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2">
+                             <button onClick={() => alert("Downloading encrypted shortage report...")} className="px-5 py-2 bg-white border border-slate-200 text-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2">
                                 <Info size={12} />
-                                Download Official Report
+                                Official PDF Log
                              </button>
                           </div>
                         </div>
@@ -164,79 +194,88 @@ export default function StudentDashboard() {
                     </div>
                   )}
 
-                  <div className={`bg-white rounded-[2rem] border-2 shadow-sm ${getStatusBgColor(stats.status)} p-8 transition-all hover:shadow-md`}> 
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className={`bg-white rounded-[2.5rem] border border-slate-100 shadow-xl p-8 group transition-all hover:shadow-2xl hover:-translate-y-1`}> 
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                       <div className="text-center md:text-left">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Percentage</h3>
-                        <p className={`text-6xl font-black tracking-tighter ${getStatusColor(stats.status)}`}>{stats.percentage}%</p>
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-3">Academic Engagement</h3>
+                        <p className={`text-7xl font-black tracking-tighter font-outfit ${getStatusColor(stats.status)}`}>{stats.percentage}%</p>
+                        <div className={`mt-4 px-4 py-1.5 rounded-xl inline-block text-[10px] font-black uppercase tracking-widest ${
+                           stats.status === 'good' ? 'bg-emerald-50 text-emerald-600' : 
+                           stats.status === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
+                        }`}>
+                           System Status: {stats.status}
+                        </div>
                       </div>
-                      <div className="h-20 w-[2px] bg-slate-200 hidden md:block"></div>
-                      <div className="flex gap-8">
-                        <div className="text-center">
-                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Days</div>
-                          <div className="text-3xl font-black text-slate-900 tracking-tighter">{stats.totalDays}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Days Present</div>
-                          <div className="text-3xl font-black text-emerald-600 tracking-tighter">{stats.presentDays}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</div>
-                          <div className={`text-xs font-black uppercase px-3 py-1 rounded-full mt-1 ${
-                             stats.status === 'good' ? 'bg-green-100 text-green-700' : 
-                             stats.status === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {stats.status}
-                          </div>
-                        </div>
+                      
+                      <div className="flex-1 grid grid-cols-2 gap-4 w-full">
+                         <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 text-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Classes</p>
+                            <p className="text-3xl font-black text-slate-900 font-outfit">{stats.totalDays}</p>
+                         </div>
+                         <div className="bg-emerald-50/50 p-6 rounded-[2rem] border border-emerald-100 text-center">
+                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Present</p>
+                            <p className="text-3xl font-black text-emerald-600 font-outfit">{stats.presentDays}</p>
+                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-lg border p-4">
-                      <h4 className="text-sm text-muted-foreground">Present</h4>
-                      <div className="text-2xl font-bold mt-2 text-green-700">{stats.presentDays}</div>
+                  <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden mt-8">
+                    <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                       <div>
+                         <h3 className="text-xl font-black text-slate-900 tracking-tight font-outfit">Validated Records</h3>
+                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Audit trail for current semester</p>
+                       </div>
+                       <HistoryIcon className="text-slate-300" size={24} />
                     </div>
-                    <div className="bg-white rounded-lg border p-4">
-                      <h4 className="text-sm text-muted-foreground">Absent</h4>
-                      <div className="text-2xl font-bold mt-2 text-red-700">{stats.absentDays}</div>
+                    <div className="p-0">
+                       <table className="w-full text-sm">
+                         <thead>
+                           <tr className="bg-slate-50/80">
+                             <th className="text-left py-4 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Node</th>
+                             <th className="text-left py-4 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Marked Status</th>
+                             <th className="text-right py-4 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified By</th>
+                           </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-50">
+                           {[
+                             { date: '2026-03-22', status: 'Present', prof: 'Prof. S. Kavitha' },
+                             { date: '2026-03-21', status: 'Present', prof: 'Prof. M. Rajesh' },
+                             { date: '2026-03-20', status: 'Absent', prof: 'Prof. K. Uma' },
+                             { date: '2026-03-19', status: 'Present', prof: 'Prof. S. Sivaranjani' }
+                           ].map((rec, i) => (
+                             <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                               <td className="py-5 px-8">
+                                 <span className="font-bold text-slate-600">{rec.date}</span>
+                               </td>
+                               <td className="py-5 px-8">
+                                 <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase w-fit tracking-tighter ${
+                                   rec.status === 'Present' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                                 }`}>
+                                   {rec.status}
+                                 </div>
+                               </td>
+                               <td className="py-5 px-8 text-right">
+                                 <span className="text-xs font-black text-slate-900 italic">{rec.prof}</span>
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
+                       <div className="p-6 bg-slate-50/30 text-center border-t border-slate-50">
+                          <button className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] hover:underline">Request Full Ledger Access</button>
+                       </div>
                     </div>
-                    <div className="bg-white rounded-lg border p-4">
-                      <h4 className="text-sm text-muted-foreground">Rate</h4>
-                      <div className="text-2xl font-bold mt-2">{stats.percentage}%</div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg border p-4">
-                    <h3 className="text-lg font-bold mb-3">Attendance Records</h3>
-                    <div className="text-sm text-muted-foreground">Showing recent attendance marks</div>
-                    <table className="w-full mt-4 table-fixed text-sm">
-                      <thead>
-                        <tr className="text-left text-muted-foreground">
-                          <th className="w-1/4">Date</th>
-                          <th className="w-1/4">Status</th>
-                          <th className="w-1/2">Marked By</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {/* fetch recent records would go here; placeholder rows */}
-                        <tr>
-                          <td className="py-2">2026-03-17</td>
-                          <td className="py-2">Present</td>
-                          <td className="py-2">Prof. X</td>
-                        </tr>
-                        <tr className="bg-gray-50">
-                          <td className="py-2">2026-03-16</td>
-                          <td className="py-2">Absent</td>
-                          <td className="py-2">Prof. Y</td>
-                        </tr>
-                      </tbody>
-                    </table>
                   </div>
                 </>
               ) : (
-                <div className="text-center text-muted-foreground py-8">No attendance records found yet.</div>
+                <div className="bg-white rounded-[3rem] p-16 text-center border border-dashed border-slate-200">
+                   <div className="p-4 bg-slate-100 rounded-[2rem] inline-block mb-4">
+                      <FileText className="text-slate-400" size={32} />
+                   </div>
+                   <h3 className="text-xl font-black text-slate-900 tracking-tight">Record Silence</h3>
+                   <p className="text-slate-500 font-medium max-w-xs mx-auto">Our database is currently awaiting finalized attendance nodes for your ID.</p>
+                </div>
               )}
             </div>
           </div>

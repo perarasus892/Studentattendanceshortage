@@ -27,11 +27,11 @@ export async function connectDB() {
 // User Schema
 const userSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
+    email: { type: String, unique: true }, // Optional as per user request
     password: { type: String, required: true },
     name: { type: String, required: true },
     role: { type: String, enum: ['admin', 'staff', 'student'], required: true },
-studentId: { type: String, required: function() { return this.role === 'student'; } },
+    studentId: { type: String, unique: true, required: function(this: any) { return this.role === 'student'; } },
   },
   { timestamps: true }
 );
@@ -42,7 +42,9 @@ const studentSchema = new mongoose.Schema(
     name: { type: String, required: true },
     rollNumber: { type: String, required: true, unique: true },
     class: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    department: { type: String, required: true },
+    phoneNumber: { type: String, required: true },
+    email: { type: String }, // Optional
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
@@ -59,6 +61,17 @@ const attendanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// SMS Notification Logs Schema
+const smsLogSchema = new mongoose.Schema(
+  {
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+    message: { type: String, required: true },
+    sentAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
 export const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
 export const Attendance = mongoose.models.Attendance || mongoose.model('Attendance', attendanceSchema);
+export const SmsLog = mongoose.models.SmsLog || mongoose.model('SmsLog', smsLogSchema);

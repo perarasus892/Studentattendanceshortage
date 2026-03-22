@@ -16,6 +16,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, role: string, rollNumber?: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  validateCredentials: (email: string, password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +36,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(false);
   }, []);
+
+  const validateCredentials = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, validateOnly: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Invalid credentials');
+      }
+      return true;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string, studentId?: string) => {
     setIsLoading(true);
@@ -92,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading, validateCredentials }}>
       {children}
     </AuthContext.Provider>
   );
