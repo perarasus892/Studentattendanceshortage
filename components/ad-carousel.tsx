@@ -64,7 +64,7 @@ export function AdCarousel() {
                                             <span className="inline-block px-2 py-1 rounded bg-white/20 text-xs font-semibold mb-2 w-fit">CAMPUS NEWS</span>
                                             <h3 className="text-2xl font-bold mb-2">{ad.title}</h3>
                                             <p className="text-blue-50/90 mb-4">{ad.description}</p>
-                                            <button className="px-5 py-2 bg-white text-blue-700 rounded-full font-bold text-sm w-fit hover:bg-blue-50 transition-colors">
+                                            <button className="px-5 py-2 bg-white text-blue-700 rounded-full font-bold text-sm w-fit hover:bg-blue-50 transition-colors focus:outline-none">
                                                 Learn More
                                             </button>
                                         </div>

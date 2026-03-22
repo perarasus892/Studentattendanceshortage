@@ -76,9 +76,9 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
   const navItems = navigationItems[user.role as keyof typeof navigationItems] || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
+    <div className="h-screen bg-slate-50 flex font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-slate-900 text-white shadow-xl">
+      <aside className="hidden lg:flex flex-col w-64 bg-slate-900 text-white shadow-xl h-screen sticky top-0">
         <div className="px-6 py-8 border-b border-slate-800 flex items-center gap-3">
           <div className="p-2 bg-blue-600 rounded-lg">
             <GraduationCap className="h-6 w-6 text-white" />
@@ -141,9 +141,9 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
         </div>
       </aside>
 
-      <div className="flex-1 min-h-screen flex flex-col">
+      <div className="flex-1 h-screen flex flex-col overflow-hidden">
         {/* Top header */}
-        <header className="bg-white border-b border-slate-200">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button className="md:hidden p-2 bg-slate-100 rounded">☰</button>
@@ -166,7 +166,7 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-6 scroll-smooth">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

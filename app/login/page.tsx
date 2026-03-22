@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,10 +16,14 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [showOtp, setShowOtp] = useState(false);
-  const [generatedOtp] = useState(() => String(Math.floor(100000 + Math.random() * 900000)));
+  const [generatedOtp, setGeneratedOtp] = useState('000000');
 
   const { login, isLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setGeneratedOtp(String(Math.floor(100000 + Math.random() * 900000)));
+  }, []);
 
   const handleInitialSubmit = (e: React.FormEvent) => {
     e.preventDefault();
